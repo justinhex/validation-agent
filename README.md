@@ -1,12 +1,12 @@
 # Validation Agent
 
-AI-assisted test generation and log triage for HIL validation — any hardware, not just automotive.
+AI-assisted test generation, test automation, and log triage for HIL validation — any hardware, not just automotive.
 
-> Work in progress. The requirements parser is done; LLM test generation, the demo DUT, and CI are on the roadmap below.
+> Work in progress. The requirements parser and LLM client are done; test generation, test automation, the demo DUT, and CI are on the roadmap below.
 
 ## The problem
 
-Writing validation tests from requirements is slow, and triaging HIL failure logs by hand is slower. Validation engineers repeat the same mechanical work on every program: read the requirement, write the test, run the bench, read the log, find the fault.
+Writing validation tests from requirements is slow, and triaging HIL failure logs by hand is slower. Validation engineers repeat the same mechanical work on every program: read the requirement, write the test, write the glue code, run the bench, read the log, find the fault.
 
 ## What this will do
 
@@ -22,8 +22,8 @@ The agent's capabilities are packaged as agent skills in `skills/` — one skill
 - [x] Demo requirements — power-window requirements (`examples/requirements_power_window.md`)
 - [x] LLM client — OpenAI-compatible API, any LLM via base URL / model / key (fake mode for testing without a key)
 - [ ] Test generator — LLM writes pytest-bdd `.feature` files from requirements
+- [ ] Test automation scripts — generate executable pytest-bdd step definitions from the `.feature` files
 - [ ] Demo DUT — simulated window controller in C++ (anti-pinch is the first exercise)
-- [ ] Step definitions — generated from the `.feature` files, pytest-bdd steps driving the bench
 - [ ] Log triage
 - [ ] Jenkins monitor + CI (GitHub Actions, Jenkinsfile, Bazel)
 
@@ -43,10 +43,11 @@ examples/
   requirements_power_window.md   # power-window requirements
 skills/
   generate-tests/SKILL.md        # agent skill: LLM writes BDD test cases from requirements
+  generate-scripts/SKILL.md      # (coming) agent skill: generate test automation scripts from .feature files
 src/hil_validation/
   __init__.py
   requirements_parser.py         # parse a requirements doc into Requirement objects
-  llm_client.py                  # OpenAI-compatible LLM client (coming)
+  llm_client.py                  # OpenAI-compatible LLM client
 tests/                           # (coming) pytest-bdd feature files + step definitions
 ```
 
