@@ -11,7 +11,8 @@ Writing validation tests from requirements is slow, and triaging HIL failure log
 ## What this will do
 
 1. **Requirements → BDD tests** — feed in a requirements document, get permanent pytest-bdd feature files. An LLM writes the test cases like a test developer: one scenario per behavior, Given-When-Then, every scenario tagged with its requirement ID.
-2. **Log triage** — feed in a HIL log, get a ranked list of anomalies with a suspected root cause and a suggested next check.
+2. **BDD → test automation scripts** — the feature files are turned into executable test scripts (pytest-bdd step definitions driving the bench) automatically, so the tests run without hand-writing glue code.
+3. **Log triage** — feed in a HIL log, get a ranked list of anomalies with a suspected root cause and a suggested next check.
 
 The agent's capabilities are packaged as agent skills in `skills/` — one skill per capability.
 
@@ -22,7 +23,7 @@ The agent's capabilities are packaged as agent skills in `skills/` — one skill
 - [x] LLM client — OpenAI-compatible API, any LLM via base URL / model / key (fake mode for testing without a key)
 - [ ] Test generator — LLM writes pytest-bdd `.feature` files from requirements
 - [ ] Demo DUT — simulated window controller in C++ (anti-pinch is the first exercise)
-- [ ] Step definitions — pytest-bdd steps driving the bench
+- [ ] Step definitions — generated from the `.feature` files, pytest-bdd steps driving the bench
 - [ ] Log triage
 - [ ] Jenkins monitor + CI (GitHub Actions, Jenkinsfile, Bazel)
 
