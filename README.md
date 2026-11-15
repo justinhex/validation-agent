@@ -2,7 +2,7 @@
 
 AI-assisted test generation, test automation, and log triage for HIL validation — any hardware, not just automotive.
 
-> Work in progress. The requirements parser and LLM client are done; test generation, test automation, the demo DUT, and CI are on the roadmap below.
+> Work in progress. The requirements parser, LLM client, and CI are done, and the demo DUT core is merged; test generation, test automation, the rest of the demo DUT, and log triage are on the roadmap below.
 
 ## The problem
 
@@ -21,11 +21,13 @@ The agent's capabilities are packaged as agent skills in `skills/` — one skill
 - [x] Requirements parser — reads a requirements doc into Requirement objects (`src/hil_validation/requirements_parser.py`)
 - [x] Demo requirements — power-window requirements (`examples/requirements_power_window.md`)
 - [x] LLM client — OpenAI-compatible API, any LLM via base URL / model / key (fake mode for testing without a key)
+- [x] CI (GitHub Actions) — builds the C++ DUT and compile-checks the Python code on every PR and push to main; `build-dut` and `check-python` are required status checks
 - [ ] Test generator — LLM writes pytest-bdd `.feature` files from requirements
 - [ ] Test automation scripts — generate executable pytest-bdd step definitions from the `.feature` files
-- [ ] Demo DUT — simulated window controller in C++ (anti-pinch is the first exercise)
+- [ ] Demo DUT — simulated window controller in C++ (core merged: ECU, WindowMotor, HallSensor, CurrentSensor; DoorControlModule, BodyControlModule, CanBus, and the bench API are next; anti-pinch is the first exercise)
 - [ ] Log triage
-- [ ] Jenkins monitor + CI (GitHub Actions, Jenkinsfile, Bazel)
+- [ ] Jenkins monitor
+- [ ] Bazel build
 
 ## Try the parser
 
@@ -35,10 +37,26 @@ python src/hil_validation/requirements_parser.py
 
 Prints the 8 power-window requirements with their IDs and source file.
 
+## Build the DUT
+
+```bash
+cmake -S dut -B dut/build -G "Visual Studio 18 2026" -A x64
+cmake --build dut/build --config Release
+```
+
+Builds `window_dut.dll`, the simulated window system (ECU, motor, Hall and current sensors). Requires Visual Studio 2026 with the Desktop development with C++ workload and CMake 4.2+.
+
 ## Project layout
 
 ```text
 README.md
+.github/
+  pull_request_template.md       # PR description template
+  workflows/ci.yml               # GitHub Actions: build the DUT + check Python syntax
+dut/
+  CMakeLists.txt                 # builds window_dut (shared library)
+  include/                       # ecu.h, window_motor.h, hall_sensor.h, current_sensor.h, ...
+  src/                           # ecu.cpp, window_motor.cpp, hall_sensor.cpp, current_sensor.cpp, ...
 examples/
   requirements_power_window.md   # power-window requirements
 skills/
@@ -53,7 +71,24 @@ tests/                           # (coming) pytest-bdd feature files + step defi
 
 ## Tech stack
 
-Python 3.10+, pytest, pytest-bdd. The LLM layer speaks the OpenAI-compatible API, so the same code runs with OpenAI, DeepSeek, a local model, or any OpenAI-compatible endpoint — just change the base URL, model, and key.
+Python 3.10+ for the parser and LLM client; C++17, CMake, and Visual Studio 2026 for the demo DUT. pytest and pytest-bdd are planned for the test suite. The LLM layer speaks the OpenAI-compatible API, so the same code runs with OpenAI, DeepSeek, a local model, or any OpenAI-compatible endpoint — just change the base URL, model, and key.
+
+## Contributing
+
+Direct pushes to `main` are blocked — all changes go through a pull request:
+
+1. Create a branch from `main` (`git checkout -b <branch-name>`).
+2. Make your change. Commit with an area prefix, for example `DUT: ...`, `Test: ...`, `CI: ...`, `Docs: ...`.
+3. Push the branch and open a pull request. Fill in the PR template (PR Content / Added / Design notes / Verification / What's next).
+4. CI must be green before merge: `build-dut` (C++ DUT build) and `check-python` (Python syntax check) are required status checks on `main`.
+
+Check locally before pushing:
+
+```bash
+cmake -S dut -B dut/build -G "Visual Studio 18 2026" -A x64
+cmake --build dut/build --config Release
+python -m compileall src
+```
 
 ## License
 
