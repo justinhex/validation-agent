@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-dut:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S dut -B dut/build -G "Visual Studio 17 2022" -A x64
+      - name: Build
+        run: cmake --build dut/build --config Release
+  
+  check-python:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile Check
+        run: python -m compileall src
