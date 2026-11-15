@@ -73,6 +73,23 @@ tests/                           # (coming) pytest-bdd feature files + step defi
 
 Python 3.10+ for the parser and LLM client; C++17, CMake, and Visual Studio 2026 for the demo DUT. pytest and pytest-bdd are planned for the test suite. The LLM layer speaks the OpenAI-compatible API, so the same code runs with OpenAI, DeepSeek, a local model, or any OpenAI-compatible endpoint — just change the base URL, model, and key.
 
+## Contributing
+
+Direct pushes to `main` are blocked — all changes go through a pull request:
+
+1. Create a branch from `main` (`git checkout -b <branch-name>`).
+2. Make your change. Commit with an area prefix, for example `DUT: ...`, `Test: ...`, `CI: ...`, `Docs: ...`.
+3. Push the branch and open a pull request. Fill in the PR template (PR Content / Added / Design notes / Verification / What's next).
+4. CI must be green before merge: `build-dut` (C++ DUT build) and `check-python` (Python syntax check) are required status checks on `main`.
+
+Check locally before pushing:
+
+```bash
+cmake -S dut -B dut/build -G "Visual Studio 18 2026" -A x64
+cmake --build dut/build --config Release
+python -m compileall src
+```
+
 ## License
 
 MIT. Sample data is fictional.
