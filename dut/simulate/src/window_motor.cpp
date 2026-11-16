@@ -7,7 +7,7 @@ WindowMotor::WindowMotor(){
 void WindowMotor::setDirection(int direction){
     
     direction_ = direction;
-    if(direction_ = kDirectionStop){
+    if(direction_ == kDirectionStop){
         stalled_ = false;
     }
 
