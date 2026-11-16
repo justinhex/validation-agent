@@ -1,6 +1,6 @@
 .env
 __pycache__
 .venv/
-dut/build/
+input/dut/build/
 .vscode/
 .docs/

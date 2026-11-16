@@ -12,9 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake -S dut -B dut/build -G "Visual Studio 18 2026" -A x64
+        run: cmake -S input/dut -B input/dut/build -G "Visual Studio 18 2026" -A x64
       - name: Build
-        run: cmake --build dut/build --config Release
+        run: cmake --build input/dut/build --config Release
   
   check-python:
     runs-on: windows-latest
