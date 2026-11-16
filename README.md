@@ -1,18 +1,20 @@
 # Validation Agent
 
-AI-assisted test generation, test automation, and log triage for HIL validation — any hardware, not just automotive.
+An AI agent that does a test engineer's job — requirements in, tested product out. The goal is to test everything, including HIL on real hardware, pure software, apps, and games — any product that needs validation.
 
-> Work in progress. The requirements parser, LLM client, and CI are done, and the demo DUT core is merged; test generation, test automation, the rest of the demo DUT, and log triage are on the roadmap below.
+> Work in progress. The requirements parser, LLM client, CI, and the demo DUT core (ECU + DoorControlModule) are done; test generation, test automation, the bench API, and log triage are on the roadmap below.
 
 ## The problem
 
-Writing validation tests from requirements is slow, and triaging HIL failure logs by hand is slower. Validation engineers repeat the same mechanical work on every program: read the requirement, write the test, write the glue code, run the bench, read the log, find the fault.
+Validation is slow because a test engineer does the same mechanical work on every program: read the requirement, write the test, write the glue code, run the bench, read the log, find the fault. HIL benches are one place this work happens — the work itself is the same everywhere, and it is all automatable.
+
+The goal of this project is to automate the test engineer's entire job with AI: requirements in, tested product out, no human in the loop for the mechanical parts.
 
 ## What this will do
 
 1. **Requirements → BDD tests** — feed in a requirements document, get permanent pytest-bdd feature files. An LLM writes the test cases like a test developer: one scenario per behavior, Given-When-Then, every scenario tagged with its requirement ID.
 2. **BDD → test automation scripts** — the feature files are turned into executable test scripts (pytest-bdd step definitions driving the bench) automatically, so the tests run without hand-writing glue code.
-3. **Log triage** — feed in a HIL log, get a ranked list of anomalies with a suspected root cause and a suggested next check.
+3. **Log triage** — feed in a test log, get a ranked list of anomalies with a suspected root cause and a suggested next check.
 
 The agent's capabilities are packaged as agent skills in `skills/` — one skill per capability.
 
@@ -22,9 +24,11 @@ The agent's capabilities are packaged as agent skills in `skills/` — one skill
 - [x] Demo requirements — power-window requirements (`examples/requirements_power_window.md`)
 - [x] LLM client — OpenAI-compatible API, any LLM via base URL / model / key (fake mode for testing without a key)
 - [x] CI (GitHub Actions) — builds the C++ DUT and compile-checks the Python code on every PR and push to main; `build-dut` and `check-python` are required status checks
+- [x] Demo DUT core — simulated window controller in C++ (ECU, DoorControlModule, WindowMotor, HallSensor, CurrentSensor, WindowSwitch, DoorHandle, CanBus; anti-pinch implemented in the DCM)
 - [ ] Test generator — LLM writes pytest-bdd `.feature` files from requirements
 - [ ] Test automation scripts — generate executable pytest-bdd step definitions from the `.feature` files
-- [ ] Demo DUT — simulated window controller in C++ (core merged: ECU, WindowMotor, HallSensor, CurrentSensor; DoorControlModule, BodyControlModule, CanBus, and the bench API are next; anti-pinch is the first exercise)
+- [ ] Bench API — the bench that drives the DUT (SIL now, real hardware/HIL later — same test cases, only the backend swaps)
+- [ ] BodyControlModule — listens to the DCM's CAN position broadcasts, forwards vent commands
 - [ ] Log triage
 - [ ] Jenkins monitor
 - [ ] Bazel build
@@ -44,7 +48,11 @@ cmake -S dut -B dut/build -G "Visual Studio 18 2026" -A x64
 cmake --build dut/build --config Release
 ```
 
-Builds `window_dut.dll`, the simulated window system (ECU, motor, Hall and current sensors). Requires Visual Studio 2026 with the Desktop development with C++ workload and CMake 4.2+.
+On Windows, double-click `dut_build.bat` for the same build.
+
+Builds `window_dut.dll`, the simulated window system (ECU, DoorControlModule, motor, Hall and current sensors, switch, door handle, CAN bus). Requires Visual Studio 2026 with the Desktop development with C++ workload and CMake 4.2+.
+
+The DUT is a shared library: the same test cases drive the simulated DUT (SIL) now and real hardware on a bench (HIL) later — only the bench backend changes.
 
 ## Project layout
 
@@ -55,8 +63,13 @@ README.md
   workflows/ci.yml               # GitHub Actions: build the DUT + check Python syntax
 dut/
   CMakeLists.txt                 # builds window_dut (shared library)
-  include/                       # ecu.h, window_motor.h, hall_sensor.h, current_sensor.h, ...
-  src/                           # ecu.cpp, window_motor.cpp, hall_sensor.cpp, current_sensor.cpp, ...
+  include/                       # ecu.h, door_control_module.h
+  src/                           # ecu.cpp, door_control_module.cpp
+  simulate/
+    include/                     # window_motor.h, hall_sensor.h, current_sensor.h, window_switch.h, door_handle.h, can_bus.h
+    src/                         # window_motor.cpp, hall_sensor.cpp, current_sensor.cpp, window_switch.cpp, door_handle.cpp, can_bus.cpp
+  build/                         # (ignored) CMake output, window_dut.dll
+dut_build.bat                    # double-click build (Windows)
 examples/
   requirements_power_window.md   # power-window requirements
 skills/
