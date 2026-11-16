@@ -24,7 +24,7 @@ def parse_requirements(path: str) -> list[Requirement]:
 
 if __name__ == "__main__":
 
-    path = "examples/requirements_power_window.md"
+    path = "input/requirements/requirements_power_window.md"
 
     requirements = parse_requirements(path)
 
