@@ -13,6 +13,10 @@ void WindowMotor::setDirection(int direction){
 
 }
 
+int WindowMotor::getDirection() const{
+    return direction_;
+}
+
 void WindowMotor::tick(int ms){
 
     if(blocked_ == true){

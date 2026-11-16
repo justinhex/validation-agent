@@ -8,9 +8,9 @@ public:
 
     virtual void init(); //initial ecu power state
     virtual void tick(int ms); //execute by tick, update status
+    virtual void powerOff();
 
     void powerOn();
-    void powerOff();
     bool isPowered() const;
     const std::string& getName() const;
 
