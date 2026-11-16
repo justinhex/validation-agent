@@ -14,7 +14,8 @@ The goal of this project is to automate the test engineer's entire job with AI, 
 
 1. **Requirements → BDD tests** — feed in a requirements document, get permanent pytest-bdd feature files. An LLM writes the test cases like a test developer: one scenario per behavior, Given-When-Then, every scenario tagged with its requirement ID.
 2. **BDD → test automation scripts** — the feature files are turned into executable test scripts (pytest-bdd step definitions driving the bench) automatically, so the tests run without hand-writing glue code.
-3. **Log triage** — feed in a test log, get a ranked list of anomalies with a suspected root cause and a suggested next check.
+3. **Run the tests** — run the generated pytest suite on the bench (simulated DUT now, real hardware later) and get a pass/fail report with logs.
+4. **Log triage** — feed in a test log, get a ranked list of anomalies with a suspected root cause and a suggested next check.
 
 The agent's capabilities are packaged as agent skills in `skills/` — one skill per capability.
 
@@ -28,6 +29,7 @@ The agent's capabilities are packaged as agent skills in `skills/` — one skill
 - [ ] Test generator — LLM writes pytest-bdd `.feature` files from requirements
 - [ ] Test automation scripts — generate executable pytest-bdd step definitions from the `.feature` files
 - [ ] Bench API — the bench that drives the DUT (SIL now, real hardware/HIL later — same test cases, only the backend swaps)
+- [ ] Test execution — run the generated pytest suite on the bench and collect results and logs
 - [ ] BodyControlModule — listens to the DCM's CAN position broadcasts, forwards vent commands
 - [ ] Log triage
 - [ ] Jenkins monitor
