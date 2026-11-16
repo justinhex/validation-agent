@@ -13,6 +13,7 @@ public:
 
     WindowMotor();
     void setDirection(int direction); // +1 opening, -1 closing, 0 stop
+    int getDirection() const;
     void tick(int ms);
     int getPosition() const; //mm, 0 = fully closed, 400 - fully opened
     int getCurrent() const; //mA, 0 stop, 150 normal, 1200 stall
