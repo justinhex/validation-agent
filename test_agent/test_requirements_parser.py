@@ -6,7 +6,7 @@ sys.path.insert(
     str(Path(__file__).resolve().parent.parent / "src")
 )
 
-from validation_agent.requirements_parser import parse_requirements
+from validation_agent.helpers.requirements_parser import parse_requirements
 
 # Purpose: test parse_requirements() in
 # src/validation_agent/requirements_parser.py — the requirement

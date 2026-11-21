@@ -1,2 +1,2 @@
-from .requirements_parser import parse_requirements, Requirement
+from .helpers.requirements_parser import parse_requirements, Requirement
 
