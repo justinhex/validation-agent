@@ -7,7 +7,7 @@ extern "C" {
 
 typedef struct WindowApi WindowApi;
 WindowApi* window_create(void);
-void window_destory(WindowApi* api);
+void window_destroy(WindowApi* api);
 
 void window_press_up(WindowApi* api);
 void window_press_down(WindowApi* api);
