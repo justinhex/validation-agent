@@ -21,7 +21,7 @@ void window_power_cycle(WindowApi* api);
 
 int window_position_mm(WindowApi* api);
 int window_current_ma(WindowApi* api);
-int winodw_can_position_mm(WindowApi* api);
+int window_can_position_mm(WindowApi* api);
 
 
 

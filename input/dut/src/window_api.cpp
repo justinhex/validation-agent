@@ -42,7 +42,7 @@ extern "C"{
         return new WindowApi();
     }
 
-    void window_destory(WindowApi* api){
+    void window_destroy(WindowApi* api){
         delete api;
     }
 

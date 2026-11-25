@@ -2,7 +2,7 @@
 
 An AI agent that does a test engineer's job — requirements in, tested product out. The focus is HIL validation on real hardware, starting with embedded systems. The ultimate vision is to test everything — pure software, apps, games, any product that needs validation.
 
-> Work in progress. The requirements parser, input loader, LLM client, CI, and the demo DUT core (ECU, DoorControlModule, BodyControlModule, window_api) are done; test generation, test automation, the Python bench, and log triage are on the roadmap below.
+> Work in progress. The requirements parser, input loader, model layer (LangChain ChatOpenAI), multi-agent state, CI, and the demo DUT core (ECU, DoorControlModule, BodyControlModule, window_api) are done; the LangGraph multi-agent graph, test generation, the Python bench, and log triage are on the roadmap below.
 
 ## The problem
 
@@ -24,11 +24,13 @@ The agent's capabilities are packaged as agent skills in `skills/` — one skill
 - [x] Requirements parser — reads a requirements doc into Requirement objects (`src/validation_agent/helpers/requirements_parser.py`)
 - [x] Input loader — loads the files a planner lists into memory (`src/validation_agent/helpers/input_loader.py`): parses the planner JSON, validates each path stays inside the pack root and exists, returns `{relative_path: file_contents}`; `ValueError` on malformed JSON, escaping paths, or empty/missing `files`; `FileNotFoundError` only when a file is genuinely missing inside the pack
 - [x] Demo requirements — power-window requirements (`input/requirements/requirements_power_window.md`)
-- [x] LLM client — OpenAI-compatible API, any LLM via base URL / model / key from `.env` (fake mode for testing without a key); generic executor, not tied to one task
+- [x] Model layer — LangChain ChatOpenAI factory (`src/validation_agent/model.py`): `create_chat_model` builds a configured ChatOpenAI per agent (base URL, model, key, temperature, max_tokens, num_ctx, timeout); points at the local Ollama endpoint or any OpenAI-compatible API
+- [x] Multi-agent state — shared graph state (`src/validation_agent/state.py`): `AgentState` (TypedDict) with pack_root, requirements, plan, generated_files, review, human_decision, manifest, extra_context, current_step
 - [x] Prompt engineer — builds the prompt for each task from the pack, compresses it, checks it against the context window, and picks which LLM runs it (`src/validation_agent/prompt_engineering.py`)
-- [x] Platform tests — pytest suite for the agent itself (`test_agent/`): input-loader + PromptEngineering + requirements_parser, 15 tests passing; runs in CI via the `test-agent` job
+- [x] Platform tests — pytest suite for the agent itself (`test_agent/`): input-loader + model + PromptEngineering + requirements_parser, 18 tests passing; runs in CI via the `test-agent` job
 - [x] CI (GitHub Actions) — builds the C++ DUT, compile-checks the Python code, and runs the platform tests (`test_agent/`) on every PR and push to main; `build-dut`, `check-python`, and `test-agent` are required status checks
 - [x] Demo DUT core — simulated window controller in C++ (ECU, DoorControlModule, BodyControlModule, WindowMotor, HallSensor, CurrentSensor, WindowSwitch, DoorHandle, CanBus; anti-pinch implemented in the DCM; `window_api` C layer exposes the DUT to the Python bench)
+- [ ] Multi-agent graph — LangGraph StateGraph (Supervisor → Planner → Generator → Reviewer) + driver; LangChain + LangGraph used as one stack
 - [ ] Test generator — LLM writes pytest-bdd `.feature` files from requirements
 - [ ] Test automation scripts — generate executable pytest-bdd step definitions from the `.feature` files
 - [x] Bench API (C layer) — `window_api` exposes the DUT to the bench (`window_create` / `window_destroy` + press, release, tick, position, current, vent, power cycle)
@@ -48,7 +50,7 @@ pip install -r requirements.txt
 pytest test_agent/ -v
 ```
 
-15 tests: input-loader (8) + PromptEngineering (4) + requirements_parser (3). The same suite runs in CI via the `test-agent` job.
+18 tests: input-loader (8) + model (3) + PromptEngineering (4) + requirements_parser (3). The same suite runs in CI via the `test-agent` job.
 
 ### Parse a requirements document
 
@@ -62,7 +64,7 @@ for req in reqs:
 
 The parser reads `- **PW-001**: ...` bullets from a markdown file and returns a list of `Requirement` objects (`req_id`, `description`, `path`), in document order.
 
-The LLM layer (client + prompt engineer) is in place and configured via `.env` — see Tech stack below. Test generation, the Python bench, and log triage are on the roadmap and not yet usable.
+The LLM layer (model + prompt engineer) is in place and configured via `.env` — see Tech stack below. Test generation, the Python bench, and log triage are on the roadmap and not yet usable.
 
 ## Build the DUT
 
@@ -110,15 +112,16 @@ src/validation_agent/
     __init__.py
     requirements_parser.py       # parse a requirements doc into Requirement objects
     input_loader.py              # load the files a planner lists into memory (load_inputs)
-  llm_client.py                  # OpenAI-compatible LLM client (generic executor, module-level generate(); LLMClient class is follow-up work)
+  model.py                       # ChatOpenAI factory: create_chat_model builds a configured ChatOpenAI per agent (base URL, model, key, temperature, max_tokens, num_ctx, timeout)
   prompt_engineering.py          # build, compress, and size-check prompts; pick the LLM per task (PromptEngineering class)
-test_agent/                      # platform tests (pytest): input-loader + PromptEngineering + requirements_parser, 15 tests
+  state.py                       # AgentState (TypedDict): shared multi-agent state (pack_root, requirements, plan, generated_files, review, human_decision, manifest, extra_context, current_step)
+test_agent/                      # platform tests (pytest): input-loader + model + PromptEngineering + requirements_parser, 18 tests
 tests/                           # (coming) pytest-bdd feature files + step definitions
 ```
 
 ## Tech stack
 
-Python 3.10+ for the parser and LLM client; C++17, CMake, and Visual Studio 2026 for the demo DUT. pytest is in use for the platform test suite (`test_agent/`, pinned in `requirements.txt`); pytest-bdd is planned for the generated test suite. The LLM layer speaks the OpenAI-compatible API: the base URL, model, and key live in `.env` and the client reads them from config (never hardcoded), so the same code runs with a third-party LLM (OpenAI, DeepSeek), a local model (Ollama), or an LLM fine-tuned and trained on this platform for validation work. The base URL points to a validation-specialized LLM; fine-tuning and training that model is a future goal of the project.
+Python 3.10+ for the parser and model layer; C++17, CMake, and Visual Studio 2026 for the demo DUT. pytest is in use for the platform test suite (`test_agent/`, pinned in `requirements.txt`); pytest-bdd is planned for the generated test suite. The LLM layer is LangChain's ChatOpenAI (`langchain-openai`), and the multi-agent orchestration is LangGraph (`langgraph`) — one stack, pinned in `requirements.txt`. The base URL, model, and key live in `.env` and the model factory reads them from config (never hardcoded), so the same code runs with a third-party LLM (OpenAI, DeepSeek), a local model (Ollama), or an LLM fine-tuned and trained on this platform for validation work. The base URL points to a validation-specialized LLM; fine-tuning and training that model is a future goal of the project.
 
 ## Contributing
 
