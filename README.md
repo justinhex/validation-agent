@@ -2,7 +2,7 @@
 
 An AI agent that does a test engineer's job — requirements in, tested product out. The focus is HIL validation on real hardware, starting with embedded systems. The ultimate vision is to test everything — pure software, apps, games, any product that needs validation.
 
-> Work in progress. The requirements parser, input loader, model layer (LangChain ChatOpenAI), multi-agent state, CI, and the demo DUT core (ECU, DoorControlModule, BodyControlModule, window_api) are done; the LangGraph multi-agent graph, test generation, the Python bench, and log triage are on the roadmap below.
+> Work in progress. The requirements parser, input loader, model layer (LangChain ChatOpenAI), config layer, multi-agent state, CI, and the demo DUT core (ECU, DoorControlModule, BodyControlModule, window_api) are done; the LangGraph multi-agent graph, test generation, the Python bench, and log triage are on the roadmap below.
 
 ## The problem
 
@@ -25,9 +25,10 @@ The agent's capabilities are packaged as agent skills in `skills/` — one skill
 - [x] Input loader — loads the files a planner lists into memory (`src/validation_agent/helpers/input_loader.py`): parses the planner JSON, validates each path stays inside the pack root and exists, returns `{relative_path: file_contents}`; `ValueError` on malformed JSON, escaping paths, or empty/missing `files`; `FileNotFoundError` only when a file is genuinely missing inside the pack
 - [x] Demo requirements — power-window requirements (`input/requirements/requirements_power_window.md`)
 - [x] Model layer — LangChain ChatOpenAI factory (`src/validation_agent/model.py`): `create_chat_model` builds a configured ChatOpenAI per agent (base URL, model, key, temperature, max_tokens, num_ctx, timeout); points at the local Ollama endpoint or any OpenAI-compatible API
-- [x] Multi-agent state — shared graph state (`src/validation_agent/state.py`): `AgentState` (TypedDict) with pack_root, requirements, plan, generated_files, review, human_decision, manifest, extra_context, current_step
+- [x] Config layer — loads settings from `.env` (`src/validation_agent/config.py`): `Settings` holds a `models` dict keyed by lowercase role name, so each LLM role gets its own endpoint (`<ROLE>_BASE_URL` / `<ROLE>_MODEL` / `<ROLE>_API_KEY`); roles are discovered by scanning for `*_BASE_URL`, so adding a role is three lines in `.env` with no code change; shared parameters (temperature, max_tokens, num_ctx, timeout) are read once and shared by all roles; missing required values raise `ValueError`; reads are isolated per call (`dotenv_values`), so tests never pollute each other
+- [x] Multi-agent state — shared graph state (`src/validation_agent/state.py`): `AgentState` (TypedDict) with pack_root, requirements, plan, generated_files, review, review_attempts, human_decision, manifest, extra_context, current_step
 - [x] Prompt engineer — builds the prompt for each task from the pack, compresses it, checks it against the context window, and picks which LLM runs it (`src/validation_agent/prompt_engineering.py`)
-- [x] Platform tests — pytest suite for the agent itself (`test_agent/`): input-loader + model + PromptEngineering + requirements_parser, 18 tests passing; runs in CI via the `test-agent` job
+- [x] Platform tests — pytest suite for the agent itself (`test_agent/`): input-loader + model + PromptEngineering + requirements_parser + config, 24 tests passing; runs in CI via the `test-agent` job
 - [x] CI (GitHub Actions) — builds the C++ DUT, compile-checks the Python code, and runs the platform tests (`test_agent/`) on every PR and push to main; `build-dut`, `check-python`, and `test-agent` are required status checks
 - [x] Demo DUT core — simulated window controller in C++ (ECU, DoorControlModule, BodyControlModule, WindowMotor, HallSensor, CurrentSensor, WindowSwitch, DoorHandle, CanBus; anti-pinch implemented in the DCM; `window_api` C layer exposes the DUT to the Python bench)
 - [ ] Multi-agent graph — LangGraph StateGraph (Supervisor → Planner → Generator → Reviewer) + driver; LangChain + LangGraph used as one stack
@@ -50,7 +51,7 @@ pip install -r requirements.txt
 pytest test_agent/ -v
 ```
 
-18 tests: input-loader (8) + model (3) + PromptEngineering (4) + requirements_parser (3). The same suite runs in CI via the `test-agent` job.
+24 tests: input-loader (8) + model (3) + PromptEngineering (4) + requirements_parser (3) + config (6). The same suite runs in CI via the `test-agent` job.
 
 ### Parse a requirements document
 
@@ -113,15 +114,16 @@ src/validation_agent/
     requirements_parser.py       # parse a requirements doc into Requirement objects
     input_loader.py              # load the files a planner lists into memory (load_inputs)
   model.py                       # ChatOpenAI factory: create_chat_model builds a configured ChatOpenAI per agent (base URL, model, key, temperature, max_tokens, num_ctx, timeout)
+  config.py                      # load settings from .env: Settings + AgentModelConfig, per-role LLM endpoints discovered from *_BASE_URL
   prompt_engineering.py          # build, compress, and size-check prompts; pick the LLM per task (PromptEngineering class)
-  state.py                       # AgentState (TypedDict): shared multi-agent state (pack_root, requirements, plan, generated_files, review, human_decision, manifest, extra_context, current_step)
-test_agent/                      # platform tests (pytest): input-loader + model + PromptEngineering + requirements_parser, 18 tests
+  state.py                       # AgentState (TypedDict): shared multi-agent state (pack_root, requirements, plan, generated_files, review, review_attempts, human_decision, manifest, extra_context, current_step)
+test_agent/                      # platform tests (pytest): input-loader + model + PromptEngineering + requirements_parser + config, 24 tests
 tests/                           # (coming) pytest-bdd feature files + step definitions
 ```
 
 ## Tech stack
 
-Python 3.10+ for the parser and model layer; C++17, CMake, and Visual Studio 2026 for the demo DUT. pytest is in use for the platform test suite (`test_agent/`, pinned in `requirements.txt`); pytest-bdd is planned for the generated test suite. The LLM layer is LangChain's ChatOpenAI (`langchain-openai`), and the multi-agent orchestration is LangGraph (`langgraph`) — one stack, pinned in `requirements.txt`. The base URL, model, and key live in `.env` and the model factory reads them from config (never hardcoded), so the same code runs with a third-party LLM (OpenAI, DeepSeek), a local model (Ollama), or an LLM fine-tuned and trained on this platform for validation work. The base URL points to a validation-specialized LLM; fine-tuning and training that model is a future goal of the project.
+Python 3.10+ for the parser and model layer; C++17, CMake, and Visual Studio 2026 for the demo DUT. pytest is in use for the platform test suite (`test_agent/`, pinned in `requirements.txt`); pytest-bdd is planned for the generated test suite. The LLM layer is LangChain's ChatOpenAI (`langchain-openai`), and the multi-agent orchestration is LangGraph (`langgraph`) — one stack, pinned in `requirements.txt`. Each LLM role has its own base URL, model, and key in `.env`, loaded by `config.py` into a per-role `AgentModelConfig` (never hardcoded), so the same code runs with a third-party LLM (OpenAI, DeepSeek), a local model (Ollama), or an LLM fine-tuned and trained on this platform for validation work — and each role can point at a different LLM. The base URL points to a validation-specialized LLM; fine-tuning and training that model is a future goal of the project.
 
 ## Contributing
 
