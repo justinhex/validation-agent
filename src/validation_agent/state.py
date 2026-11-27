@@ -7,6 +7,7 @@ class AgentState(TypedDict):
     plan: dict | None
     generated_files: list[str]
     review: dict | None
+    review_attempts: dict[str, int]
     human_decision: str | None
     manifest: dict | None
     extra_context: dict | None
